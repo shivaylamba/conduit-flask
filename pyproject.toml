@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "realworld-flask"
+version = "0.1.0"
+description = ""
+authors = ["Shivay Lamba <shivaylamba@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+flask = "^3.0.2"
+flask-script = "^2.0.6"
+couchbase = "^4.1.11"
+python-dotenv = "^1.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+server = "realworld.app:app"
+prod = "python -m flask run --host=0.0.0.0 --port=80 --app realworld.app:app"
