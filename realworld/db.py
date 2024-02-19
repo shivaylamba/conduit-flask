@@ -12,9 +12,8 @@ class CouchbaseClient(object):
         self.cluster = None
         self.bucket = None
         self.scope = None
-        self.app = None
 
-    def init_app(self, conn_str: str, username: str, password: str, app):
+    def init_app(self, conn_str: str, username: str, password: str):
         """Initialize connection to the Couchbase cluster"""
         print("Initializing connection")
         self.conn_str = conn_str
@@ -22,7 +21,6 @@ class CouchbaseClient(object):
         self.scope_name = "inventory"
         self.username = username
         self.password = password
-        self.app = app
         self.connect()
 
     def connect(self) -> None:
@@ -35,12 +33,12 @@ class CouchbaseClient(object):
                 auth = PasswordAuthenticator(self.username, self.password)
 
                 cluster_opts = ClusterOptions(auth)
+                cluster_opts.kv_timeout = timedelta(milliseconds=10000)  # Set KV timeout
+                cluster_opts.query_timeout = timedelta(milliseconds=10000)  # Set query timeout
                 # wan_development is used to avoid latency issues while connecting to Couchbase over the internet
                 cluster_opts.apply_profile("wan_development")
-
-                # connect to the cluster    
+   
                 self.cluster = Cluster(self.conn_str, cluster_opts)
-                # wait until the cluster is ready for use
                 self.cluster.wait_until_ready(timedelta(seconds=5))
                 # get a reference to our bucket
                 self.bucket = self.cluster.bucket(self.bucket_name)
@@ -90,6 +88,7 @@ class CouchbaseClient(object):
 
     def upsert_document(self, collection_name: str, key: str, doc: dict):
         """Upsert document using KV operation"""
+        print("Upsert document using KV operation : " , doc)
         return self.scope.collection(collection_name).upsert(key, doc)
 
     def query(self, sql_query, *options, **kwargs):
