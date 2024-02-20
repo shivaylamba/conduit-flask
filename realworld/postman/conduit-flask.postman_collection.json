@@ -1,0 +1,52 @@
+{
+	"info": {
+		"_postman_id": "c18618df-c657-4a39-b33e-e752a14cf760",
+		"name": "conduit-flask",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "13838077",
+		"_collection_link": "https://grey-crater-436369.postman.co/workspace/NNN-MUSIC~d67b3386-dcc5-49b2-967d-f28e711ba9d5/collection/13838077-c18618df-c657-4a39-b33e-e752a14cf760?action=share&source=collection_link&creator=13838077"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\" : \"ashu45\",\n    \"password\" : \"ashu1234\",\n    \"email\" : \"ashusinghweb414@gmail.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://127.0.0.1:8080/users/"
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"password\" : \"ashu1234\",\n    \"email\" : \"ashusinghweb414@gmail.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://127.0.0.1:8080/users/login"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

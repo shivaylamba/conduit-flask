@@ -23,7 +23,7 @@ def create_app() -> Flask:
     _register_blueprints(app)
     connectDB()
     if __name__ == '__main__':
-        app.run(debug=True)
+        app.run(debug=True, host="0.0.0.0", port=8080)
     return app
 
 app = create_app()

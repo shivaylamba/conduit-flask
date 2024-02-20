@@ -80,7 +80,10 @@ class CouchbaseClient(object):
 
     def insert_document(self, collection_name: str, key: str, doc: dict):
         """Insert document using KV operation"""
-        return self.scope.collection(collection_name).insert(key, doc)
+        print(self.bucket)
+        print("Insert document using KV operation : ", key, doc)
+        self.bucket.default_collection().insert(key, doc)
+        x = self.scope.collection(collection_name).insert(key, doc)
 
     def delete_document(self, collection_name: str, key: str):
         """Delete document using KV operation"""
