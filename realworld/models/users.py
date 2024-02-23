@@ -31,17 +31,19 @@ class User:
 
 
     @staticmethod
-    def get(user_id):
-        result = couchbase_db.get_document("users", str(user_id))
-        if result:
-            user_data = result.content_as[str]()
-            return User(
-                user_id=user_data["user_id"],
-                username=user_data["username"],
-                email=user_data["email"],
-                password=user_data["password"]
-            )
-        return None
+    def get_user_by_id(user_id):
+        try: 
+            user_document = couchbase_db.query(f'SELECT * FROM `users` WHERE user_id = "{user_id}"')
+            # Access the result rows
+            for row in user_document.rows():
+
+                user_data = row["users"]
+                if user_data:
+                    return User(user_data["user_id"], user_data["username"], user_data["email"], user_data["password"])
+            return None
+        except CouchbaseException as e:
+            print(f"### CouchbaseException: {e}")
+            return 1
 
     @staticmethod
     def get_by_username(username):

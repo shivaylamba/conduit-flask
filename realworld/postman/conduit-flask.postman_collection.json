@@ -45,6 +45,83 @@
 						"url": "http://127.0.0.1:8080/users/login"
 					},
 					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"password\" : \"ashu1234\",\n    \"email\" : \"ashusinghweb414@gmail.com\"\n}"
+						},
+						"url": "http://127.0.0.1:8080/users/get-current-user"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Articles",
+			"item": [
+				{
+					"name": "Create an articles",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Requested-With",
+								"value": "XMLHttpRequest"
+							},
+							{
+								"key": "Authorization",
+								"value": "Token {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"title\": \"How to train your dragon\",\n        \"description\": \"Ever wonder how?\",\n        \"body\": \"Very carefully.\",\n        \"tagList\": [\n            \"training\",\n            \"dragons\"\n        ]\n    }\n"
+						},
+						"url": "http://127.0.0.1:8080/articles"
+					},
+					"response": []
+				},
+				{
+					"name": "All Articles",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMmU4MjBkYjUtMzM3Yi00MTQ4LWFmODAtYzNmMTRhNDIxN2ZkIiwiZXhwIjoxNzA5Nzg2ODU3fQ.le7CRAhjHmKOHkwC_8SAGLmHwM-pmtKnMnDc0hNcU0U"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"title\": \"How to train your dragon\",\n        \"description\": \"Ever wonder how?\",\n        \"body\": \"Very carefully.\",\n        \"tagList\": [\n            \"training\",\n            \"dragons\"\n        ]\n    }\n"
+						},
+						"url": "http://127.0.0.1:8080/articles"
+					},
+					"response": []
 				}
 			]
 		}
