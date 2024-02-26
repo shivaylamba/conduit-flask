@@ -15,29 +15,19 @@ class Author:
             "following": self.following
         }
 
-class Article:
-    def __init__(self, slug: str, title: str, description: str, body: str, tag_list: list[str],
-                 created_at: datetime, updated_at: datetime, favorited: list[str],
-                 author: Author):
-        self.slug = slug
-        self.title = title
-        self.description = description
+class Comment:
+    def __init__(self, comment_id: int, article_id: int, body: str, created_at: datetime, author: Author):
+        self.comment_id = comment_id
+        self.article_id = article_id
         self.body = body
-        self.tag_list = tag_list
         self.created_at = created_at
-        self.updated_at = updated_at
-        self.favorited = favorited
         self.author = author
 
     def to_dict(self):
         return {
-            "slug": self.slug,
-            "title": self.title,
-            "description": self.description,
+            "comment_id": self.comment_id,
+            "article_id": self.article_id,
             "body": self.body,
-            "tag_list": self.tag_list,
             "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-            "favorited": self.favorited,
             "author": self.author.to_dict()
         }

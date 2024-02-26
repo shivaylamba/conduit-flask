@@ -46,7 +46,6 @@ def create_article():
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
         favorited=False,
-        favorites_count=0,
         author=author  # Set author here based on authentication
     )
     couchbase_db.insert_document("articles", article_id, article.to_dict())
@@ -59,11 +58,38 @@ def get_articles():
     # Get query parameters for pagination
     skip = int(request.args.get("skip", 0))
     limit = int(request.args.get("limit", 10))  # Default limit to 10 if not provided
+    author_query = request.args.get("author")
+    print("Query parameters author", author_query)
+
+    favorited_query = request.args.get("favorited")
+    print("Query parameters favroite", favorited_query)
+    tag_query = request.args.get("tag")
+
+    print("Query parameters", tag_query)
+
+    article = []
 
     # Fetch articles based on skip and limit
-    print("---Hiting Query for articles---")
-    articles = couchbase_db.query(f'SELECT * FROM `articles` LIMIT {limit} OFFSET {skip}')
-    print ('---all articles--', articles)
+    if author_query:
+        articles = couchbase_db.query(f"""SELECT *
+            FROM articles
+            WHERE author.username = "{author_query}"
+            LIMIT {limit} OFFSET {skip}
+        """)
+    elif favorited_query:
+        articles = couchbase_db.query(f"""SELECT *
+            FROM articles
+            WHERE ARRAY_CONTAINS(favorited, "{favorited_query}");
+            LIMIT {limit} OFFSET {skip}
+        """)
+    elif tag_query:
+        articles = couchbase_db.query(f"""SELECT *
+            FROM articles
+            WHERE ARRAY_CONTAINS(tag_list, "{tag_query}");
+            LIMIT {limit} OFFSET {skip}
+        """)
+    else:
+        articles = couchbase_db.query(f'SELECT * FROM `articles` LIMIT {limit} OFFSET {skip}')
 
     articles_data = []
 
@@ -73,3 +99,97 @@ def get_articles():
 
     # Return articles as JSON response
     return jsonify({"articles": articles_data}), 200
+
+@articles_blueprint.route("/articles", methods=["PUT"])
+def update_article():
+    # Get request data of 
+    data = request.json
+    # TODO : Request Validation
+    user = g.current_user
+    article_id = data['article_id']
+    fields = data["fields"]
+
+    try:
+        update_values = []
+
+        for field, value in fields.items():
+            # Escape single quotes in the value to prevent SQL injection
+            value = str(value).replace("'", "''")
+            update_values.append(f"{field} = '{value}'")
+
+        update_query = f"UPDATE articles SET {', '.join(update_values)} WHERE article_id = '{article_id}' AND author.username = '{user.id}';"
+
+        couchbase_db.query(update_query)
+        
+    except Exception as e:
+        return jsonify({"message": "Unable to update article"}), 500
+
+
+@articles_blueprint.route("/favorite", methods=["POST"])
+def favorite_article():
+    # Get request data of 
+    data = request.json
+    # TODO : Request Validation
+    user = g.current_user
+    article_id = data['article_id']
+
+    try:
+        couchbase_db.query(f"""
+            UPDATE articles
+            SET favorite = ARRAY_APPEND(IFNULL(favorited, []), {user.user_id})
+            WHERE article_id = {article_id};
+        """)
+    except Exception as e:
+        return jsonify({"message": "Unable to favorite article"}), 500
+
+    # Return articles as JSON response
+    return jsonify({"message": "article favorited"}), 200
+
+@articles_blueprint.route("/", methods=["POST"])
+def delete_articles():
+    # Get request data of 
+    data = request.json
+    # TODO : Request Validation
+    user = g.current_user
+    article_id = data['article_id']
+
+    # validating that
+
+    try:
+        couchbase_db.query(f"""
+            DELETE FROM articles
+            WHERE article_id = {article_id}
+            AND author.username = {user.username};
+        """)
+
+    except Exception as e:
+        return jsonify({"message": "article with id has been deleted sucessfully"}), 500
+
+    # Return articles as JSON response
+    return jsonify({"message": "article with id has been deleted sucessfully"}), 200
+
+
+@articles_blueprint.route("/<slug>", methods=["GET"])
+def get_article_by_slug(slug):
+    # Query the database to fetch the article based on the slug
+    print(slug)
+    try:
+        article = couchbase_db.query(f"""
+            SELECT *
+            FROM articles
+            WHERE slug = '{slug}';
+        """)
+        print(article)
+
+        for row in article.rows():
+            article = row['articles']
+            return jsonify({"article": article}), 200
+        # article = article.rows()[0]['articles']
+        
+        # If article is found, return it as JSON response
+        if article:
+            return jsonify({"article": article}), 200
+        else:
+            return jsonify({"error": "Article not found"}), 404
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500

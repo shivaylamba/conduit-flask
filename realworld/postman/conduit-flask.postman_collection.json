@@ -122,6 +122,79 @@
 						"url": "http://127.0.0.1:8080/articles"
 					},
 					"response": []
+				},
+				{
+					"name": "Article by slug",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "http://127.0.0.1:8080/articles/how-to-train-your-dragon"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMmU4MjBkYjUtMzM3Yi00MTQ4LWFmODAtYzNmMTRhNDIxN2ZkIiwiZXhwIjoxNzEwMTkxNDk3fQ.cKl2GqjzDYhk-iFqYFQra83DGpbvHissDLh00LgWD3Y",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"article_id\" : \"731d8392-84d2-4c02-9cc3-570ef8186aae\",\n    \"body\" : \"wow, its looking greate\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://127.0.0.1:8080/comments/"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Comments ",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMmU4MjBkYjUtMzM3Yi00MTQ4LWFmODAtYzNmMTRhNDIxN2ZkIiwiZXhwIjoxNzEwMTkxNDk3fQ.cKl2GqjzDYhk-iFqYFQra83DGpbvHissDLh00LgWD3Y"
+							}
+						],
+						"url": "http://127.0.0.1:8080/comments/731d8392-84d2-4c02-9cc3-570ef8186aae"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Comment",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMmU4MjBkYjUtMzM3Yi00MTQ4LWFmODAtYzNmMTRhNDIxN2ZkIiwiZXhwIjoxNzEwMTkzNDg4fQ.7YlfYU0Onzhg0h9WsgGPgXHoI_4FUbvBcVJWGhixqm0"
+							}
+						],
+						"url": "http://127.0.0.1:8080/comments/967d093c-70fe-4a0d-ac28-c9898247cd65"
+					},
+					"response": []
 				}
 			]
 		}
