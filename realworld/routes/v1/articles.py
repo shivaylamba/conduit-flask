@@ -16,7 +16,7 @@ articles_blueprint = Blueprint(
 @articles_blueprint.before_request
 def apply_authentication_middleware():
     # List of routes that require authentication
-    auth_required_routes = ["articles_endpoints.create_article"]
+    auth_required_routes = ["articles_endpoints.create_article","articles_endpoints.get_followed_articles"]
     print("-----Request Endpoint-------", request.endpoint)
 
     # Check if the current request endpoint is in the list of routes that require authentication
@@ -42,7 +42,7 @@ def create_article():
         title=data["title"],
         description=data["description"],
         body=data["body"],
-        tag_list=data["tagList"],
+        tag_list=data["tagList"] or [],
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
         favorited=False,
@@ -137,7 +137,7 @@ def favorite_article():
         couchbase_db.query(f"""
             UPDATE articles
             SET favorite = ARRAY_APPEND(IFNULL(favorited, []), {user.user_id})
-            WHERE article_id = {article_id};
+            WHERE article_id = "{article_id}";
         """)
     except Exception as e:
         return jsonify({"message": "Unable to favorite article"}), 500
@@ -158,8 +158,8 @@ def delete_articles():
     try:
         couchbase_db.query(f"""
             DELETE FROM articles
-            WHERE article_id = {article_id}
-            AND author.username = {user.username};
+            WHERE article_id = "{article_id}"
+            AND author.username = "{user.username}";
         """)
 
     except Exception as e:
@@ -191,5 +191,47 @@ def get_article_by_slug(slug):
             return jsonify({"article": article}), 200
         else:
             return jsonify({"error": "Article not found"}), 404
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500
+
+@articles_blueprint.route("/tags", methods=["GET"])
+def get_all_tags():
+    try:
+        articles = couchbase_db.query(f"""
+            SELECT *
+            FROM article
+            WHERE ARRAY_LENGTH(tag_list, 1) > 0;;
+        """)
+        print(articles)
+        tags = []
+        for row in articles.rows:
+            article = row['articles']
+            tags.extend(article.tag_list)
+        return jsonify({"tags": tags}), 200
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500
+    
+@articles_blueprint.blueprint.route("/get_followed_articles", methods=["GET"])
+def get_followed_articles():
+    try:
+        current_user = g.current_user
+
+        followed_profiles_data = couchbase_db.query("""SELECT followed_username from users where following_username = "{current_user.username}"; """)
+        followed_profiles = []
+
+        for row in followed_profiles_data.rows():
+            followed_profiles.append(row['followed_username'])
+
+        articles = couchbase_db.query(f"""
+            SELECT *
+            FROM articles
+            WHERE username IN {followed_profiles};
+        """)
+        print(articles)
+        articles_data = []
+        for row in articles.rows:
+            article = row['articles']
+            articles_data.append(article)
+        return jsonify({"articles": articles_data}), 200
     except Exception as e:
         return jsonify({"error": "Internal Server Error"}), 500

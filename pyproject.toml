@@ -23,5 +23,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-server = "realworld.app:app"
+server = "poetry run python realworld.app:app"
 prod = "python -m flask run --host=0.0.0.0 --port=80 --app realworld.app:app"
