@@ -3,13 +3,9 @@ from models.profiles import Profiles
 from utils.auth import authenticate
 from extensions import couchbase_db
 import uuid
-from utils.slug import create_slug
 from datetime import datetime
-from couchbase.exceptions import (
-    CouchbaseException,
-    DocumentExistsException,
-    DocumentNotFoundException,
-)
+from validation.profiles import FollowUnfollowRequest, FollowUnfollowResponse
+from validation.common import ErrorResponse
 
 profiles_blueprint = Blueprint(
     "profiles_endpoints",
@@ -25,16 +21,16 @@ def apply_authentication_middleware():
 
 @profiles_blueprint.route("/", methods=["POST"])
 def follow_unfollow():
-    data = request.json
+    data = FollowUnfollowRequest(**request.json)
     # TODO : Request Validation
     current_user = g.current_user
     profile_id = str(uuid.uuid4())
-    action = data["action"]
+    action = data.action
 
     if action != "FOLLOW" and action != "UNFOLLOW":
-        return jsonify({"error": "action doesn't exist"}), 400
+        return jsonify(ErrorResponse(**{"error": "action doesn't exist"})), 400
 
-    followed_username = data["followed_username"]
+    followed_username = data.followed_username
 
     user_data = couchbase_db.query("""SELECT * FROM users WHERE username = {followed_username}""")
     user = None
@@ -44,9 +40,9 @@ def follow_unfollow():
         break
         
     if user == None:
-        return jsonify({"error": "followed user doesn't exist"}), 400   
+        return jsonify(ErrorResponse(**{"error": "followed user doesn't exist"})), 400   
     elif current_user.username == user.username:
-        return jsonify({"error": "following and followed user cannot be same"}), 400
+        return jsonify(ErrorResponse(**{"error": "following and followed user cannot be same"})), 400
     
 
     if action == "FOLLOW":
@@ -66,9 +62,9 @@ def follow_unfollow():
         )
         if profile == None:
             couchbase_db.insert("profiles",profile_id, profile_data_to_insert.to_dict())
-            return jsonify({"message": "profile followed succesfully!"}), 200
+            return jsonify(FollowUnfollowResponse(**{"message": "profile followed succesfully!"})), 200
         else:
-            return jsonify({"error": "following and followed user cannot be same"}), 400
+            return jsonify(ErrorResponse(**{"error": "following and followed user cannot be same"})), 400
     else:
         profile_data = couchbase_db.query("""SELECT * FROM profiles where following_username = {current_user.username} and followed_username = {following_username}""")
         profile = None
@@ -79,6 +75,6 @@ def follow_unfollow():
         
         if profile!= None:
             couchbase_db.delete("profiles",profile_id)
-            return jsonify({"message": "profile unfollowed succesfully!"}), 200
+            return jsonify(ErrorResponse(**{"message": "profile unfollowed succesfully!"})), 200
         else:
-            return jsonify({"error": "already following the profile"}), 400
+            return jsonify(ErrorResponse(**{"error": "already following the profile"})), 400

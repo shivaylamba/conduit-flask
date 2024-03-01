@@ -5,6 +5,8 @@ from extensions import couchbase_db
 import uuid
 from utils.slug import create_slug
 from datetime import datetime
+from validation.articles import CreateArticleRequest, CreateArticleResponse, GetArticleResponse, UpdateArticleRequest, UpdateArticleResponse, DeleteArticleResponse, FavoriteArticleRequest, FavoriteArticleResponse, DeleteArticleRequest, GetTagsResponse, GetArticlesResponse
+from validation.common import ErrorResponse
 
 
 articles_blueprint = Blueprint(
@@ -27,8 +29,7 @@ def apply_authentication_middleware():
 
 @articles_blueprint.route("/", methods=["POST"])
 def create_article():
-    data = request.json
-    # TODO : Request Validation
+    data = CreateArticleRequest(**request.json)
     user = g.current_user
     article_id = str(uuid.uuid4())
     author = Author (
@@ -38,11 +39,11 @@ def create_article():
         username=user.username
     )
     article = Article(
-        slug=create_slug(data["title"]),
-        title=data["title"],
-        description=data["description"],
-        body=data["body"],
-        tag_list=data["tagList"] or [],
+        slug=create_slug(data.title),
+        title=data.title,
+        description=data.description,
+        body=data.body,
+        tag_list=data.tagList,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
         favorited=False,
@@ -50,7 +51,7 @@ def create_article():
     )
     couchbase_db.insert_document("articles", article_id, article.to_dict())
 
-    return jsonify({"article": article.to_dict()}), 201
+    return jsonify(CreateArticleResponse(**{"article": article.to_dict()})), 201
 
 
 @articles_blueprint.route("/", methods=["GET"])
@@ -59,13 +60,9 @@ def get_articles():
     skip = int(request.args.get("skip", 0))
     limit = int(request.args.get("limit", 10))  # Default limit to 10 if not provided
     author_query = request.args.get("author")
-    print("Query parameters author", author_query)
 
     favorited_query = request.args.get("favorited")
-    print("Query parameters favroite", favorited_query)
     tag_query = request.args.get("tag")
-
-    print("Query parameters", tag_query)
 
     article = []
 
@@ -98,16 +95,15 @@ def get_articles():
         articles_data.append(article)
 
     # Return articles as JSON response
-    return jsonify({"articles": articles_data}), 200
+    return jsonify(GetArticlesResponse(**{"articles": articles_data})), 200
 
 @articles_blueprint.route("/articles", methods=["PUT"])
 def update_article():
     # Get request data of 
-    data = request.json
-    # TODO : Request Validation
+    data = UpdateArticleRequest(**request.json)
     user = g.current_user
-    article_id = data['article_id']
-    fields = data["fields"]
+    article_id = data.article_id
+    fields = data.fields
 
     try:
         update_values = []
@@ -120,18 +116,19 @@ def update_article():
         update_query = f"UPDATE articles SET {', '.join(update_values)} WHERE article_id = '{article_id}' AND author.username = '{user.id}';"
 
         couchbase_db.query(update_query)
+
+        return jsonify(UpdateArticleResponse(**{"message": "Article update"})), 200
         
     except Exception as e:
-        return jsonify({"message": "Unable to update article"}), 500
+        return jsonify(ErrorResponse(**{"message": "Unable to update article"})), 500
 
 
 @articles_blueprint.route("/favorite", methods=["POST"])
 def favorite_article():
     # Get request data of 
-    data = request.json
-    # TODO : Request Validation
+    data = FavoriteArticleRequest(**request.json)
     user = g.current_user
-    article_id = data['article_id']
+    article_id = data.article_id
 
     try:
         couchbase_db.query(f"""
@@ -140,18 +137,18 @@ def favorite_article():
             WHERE article_id = "{article_id}";
         """)
     except Exception as e:
-        return jsonify({"message": "Unable to favorite article"}), 500
+        return jsonify(ErrorResponse(**{"message": "Unable to favorite article"})), 500
 
     # Return articles as JSON response
-    return jsonify({"message": "article favorited"}), 200
+    return jsonify(FavoriteArticleResponse(**{"message": "article favorited"})), 200
 
 @articles_blueprint.route("/", methods=["POST"])
 def delete_articles():
     # Get request data of 
-    data = request.json
+    data = DeleteArticleRequest(**request.json)
     # TODO : Request Validation
     user = g.current_user
-    article_id = data['article_id']
+    article_id = data.article_id
 
     # validating that
 
@@ -163,23 +160,21 @@ def delete_articles():
         """)
 
     except Exception as e:
-        return jsonify({"message": "article with id has been deleted sucessfully"}), 500
+        return jsonify(ErrorResponse(**{"message": "article with id has been deleted sucessfully"})), 500
 
     # Return articles as JSON response
-    return jsonify({"message": "article with id has been deleted sucessfully"}), 200
+    return jsonify(DeleteArticleResponse(**{"message": "article with id has been deleted sucessfully"})), 200
 
 
 @articles_blueprint.route("/<slug>", methods=["GET"])
 def get_article_by_slug(slug):
     # Query the database to fetch the article based on the slug
-    print(slug)
     try:
         article = couchbase_db.query(f"""
             SELECT *
             FROM articles
             WHERE slug = '{slug}';
         """)
-        print(article)
 
         for row in article.rows():
             article = row['articles']
@@ -188,11 +183,11 @@ def get_article_by_slug(slug):
         
         # If article is found, return it as JSON response
         if article:
-            return jsonify({"article": article}), 200
+            return jsonify(GetArticleResponse(**{"article": article})), 200
         else:
-            return jsonify({"error": "Article not found"}), 404
+            return jsonify(ErrorResponse(**{"error": "Article not found"})), 404
     except Exception as e:
-        return jsonify({"error": "Internal Server Error"}), 500
+        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500
 
 @articles_blueprint.route("/tags", methods=["GET"])
 def get_all_tags():
@@ -202,14 +197,13 @@ def get_all_tags():
             FROM article
             WHERE ARRAY_LENGTH(tag_list, 1) > 0;;
         """)
-        print(articles)
         tags = []
         for row in articles.rows:
             article = row['articles']
             tags.extend(article.tag_list)
-        return jsonify({"tags": tags}), 200
+        return jsonify(GetTagsResponse(**{"tags": tags})), 200
     except Exception as e:
-        return jsonify({"error": "Internal Server Error"}), 500
+        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500
     
 @articles_blueprint.blueprint.route("/get_followed_articles", methods=["GET"])
 def get_followed_articles():
@@ -227,11 +221,10 @@ def get_followed_articles():
             FROM articles
             WHERE username IN {followed_profiles};
         """)
-        print(articles)
         articles_data = []
         for row in articles.rows:
             article = row['articles']
             articles_data.append(article)
-        return jsonify({"articles": articles_data}), 200
+        return jsonify(GetArticlesResponse(**{"articles": articles_data})), 200
     except Exception as e:
-        return jsonify({"error": "Internal Server Error"}), 500
+        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500

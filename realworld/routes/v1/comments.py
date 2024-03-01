@@ -7,9 +7,10 @@ from utils.slug import create_slug
 from datetime import datetime
 from couchbase.exceptions import (
     CouchbaseException,
-    DocumentExistsException,
     DocumentNotFoundException,
 )
+from validation.common import ErrorResponse
+from validation.comments import CreateCommentRequest, CreateCommentResponse, GetCommentsResponse, DeleteCommentResponse
 
 comments_blueprint = Blueprint(
     "comments_endpoints",
@@ -33,7 +34,7 @@ def apply_authentication_middleware():
 
 @comments_blueprint.route("/", methods=["POST"])
 def create_comment():
-    data = request.json
+    data = CreateCommentRequest(**request.json)
     # TODO : Request Validation
     user = g.current_user
     comment_id = str(uuid.uuid4())
@@ -44,25 +45,24 @@ def create_comment():
         username=user.username
     )
     try:
-            article = couchbase_db.get_document("articles", data["article_id"])
-
+            couchbase_db.get_document("articles", data.article_id)
             comment = Comment(
                 comment_id=comment_id,
-                article_id=data["article_id"],
-                body=data["body"],
+                article_id=data.article_id,
+                body=data.body,
                 created_at=datetime.utcnow(),
                 author=author  # Set author here based on authentication
             )
 
             couchbase_db.insert_document("comments", comment_id, comment.to_dict())
 
-            return jsonify({"comment": comment.to_dict()}), 201
+            return jsonify(CreateCommentResponse(**{"comment": comment.to_dict()})), 201
     
     except DocumentNotFoundException:
-            return jsonify({"message": "Article not found"}), 404
+            return jsonify(ErrorResponse(**{"message": "Article not found"})), 404
     
     except CouchbaseException as e:
-            return jsonify({"message": "internal server error"}), 500
+            return jsonify(ErrorResponse(**{"message": "internal server error"})), 500
 
 
 @comments_blueprint.route("/<article_id>", methods=["GET"])
@@ -77,7 +77,6 @@ def get_comments(article_id):
             WHERE article_id = "{article_id}"
             LIMIT {limit} OFFSET {skip}
         """)
-        print(comments)
         comments_data = []
 
         for row in comments.rows():
@@ -86,43 +85,30 @@ def get_comments(article_id):
 
         # Convert comments to JSON format
         # Return comments as JSON response
-        return jsonify({"comments": comments_data}), 200
+        return jsonify(GetCommentsResponse(**{"comments": comments_data})), 200
 
     except Exception as e:
         # Handle exceptions
-        return jsonify({"error": "Internal Server Error"}), 500
+        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500
 
 
 @comments_blueprint.route("/<comment_id>", methods=["DELETE"])
 def delete_comment(comment_id):
     try:
-        print("comment id", comment_id)
-        comment_document = couchbase_db.get_document("comments", comment_id)
-        print ('comment_document', comment_document)
-        print("comment info", comment.value)
+        couchbase_db.get_document("comments", comment_id)
         comment = comment.value
-        print("before user info", comment)
-
         user = g.current_user
-        print("user info", user)
-
-        print("user author", user.username)
-        print("comment author", comment.author)
-
 
         if comment.author.username != user.username:
-             return jsonify({"error": "You don't have permission to delete this comment"}), 403
-        
-        print("comment info", comment.value)
-
+             return jsonify(ErrorResponse(**{"error": "You don't have permission to delete this comment"})), 403
 
         couchbase_db.delete_document("comments", comment_id)
 
-        return jsonify({"message": "Comment deleted successfully"}), 200
+        return jsonify(DeleteCommentResponse(**{"message": "Comment deleted successfully"})), 200
     
     except DocumentNotFoundException:
-            return jsonify({"message": "Comment not found"}), 404
+            return jsonify(ErrorResponse(**{"message": "Comment not found"})), 404
     
     except Exception as e:
         # Handle exceptions
-        return jsonify({"error": "Internal Server Error"}), 500
+        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500

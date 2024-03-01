@@ -47,5 +47,5 @@ class CurrentUserRequest(BaseModel):
             
         return fields
     
-class ErrorResponse:
+class ErrorResponse(BaseModel):
     error: str
