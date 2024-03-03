@@ -112,15 +112,15 @@ def update_article():
     user = g.current_user
     article_id = data.article_id
     fields = data.fields
-
-    required_article = couchbase_db.query(f"SELECT * FROM `articles` WHERE article_id = '{article_id}' AND author.username = '{user.username}'")
-
+    article = None
+    query = f"SELECT * FROM `articles` WHERE article_id = '{article_id}' AND author.username = '{user.username}'"
+    required_article = couchbase_db.query(query)
     for row in required_article.rows():
         article = row['articles']
         break
 
     if not article:
-        return jsonify(ErrorResponse(**{"meerrorssage": "Article not found"}).model_dump()), 404
+        return jsonify(ErrorResponse(**{"error": "Article not found"}).model_dump()), 404
 
     merged_article = {**article, **fields}
 
