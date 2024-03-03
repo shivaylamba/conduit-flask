@@ -7,6 +7,7 @@ from utils.slug import create_slug
 from datetime import datetime
 from validation.articles import CreateArticleRequest, CreateArticleResponse, GetArticleResponse, UpdateArticleRequest, UpdateArticleResponse, DeleteArticleResponse, FavoriteArticleRequest, FavoriteArticleResponse, DeleteArticleRequest, GetTagsResponse, GetArticlesResponse
 from validation.common import ErrorResponse
+from utils.handle_errors import with_error_handling
 
 
 articles_blueprint = Blueprint(
@@ -18,7 +19,7 @@ articles_blueprint = Blueprint(
 @articles_blueprint.before_request
 def apply_authentication_middleware():
     # List of routes that require authentication
-    auth_required_routes = ["articles_endpoints.create_article","articles_endpoints.get_followed_articles"]
+    auth_required_routes = ["articles_endpoints.create_article","articles_endpoints.get_followed_articles","articles_endpoints.update_article", "articles_endpoints.favorite_article", "articles_endpoints.delete_articles", "articles_endpoints.get_article_by_slug"]
     print("-----Request Endpoint-------", request.endpoint)
 
     # Check if the current request endpoint is in the list of routes that require authentication
@@ -28,8 +29,10 @@ def apply_authentication_middleware():
             return response  # Return error response if authentication fails
 
 @articles_blueprint.route("/", methods=["POST"])
+@with_error_handling()
 def create_article():
     data = CreateArticleRequest(**request.json)
+
     user = g.current_user
     article_id = str(uuid.uuid4())
     author = Author (
@@ -38,7 +41,9 @@ def create_article():
         image="",
         username=user.username
     )
+
     article = Article(
+        article_id = article_id,
         slug=create_slug(data.title),
         title=data.title,
         description=data.description,
@@ -46,15 +51,17 @@ def create_article():
         tag_list=data.tagList,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
-        favorited=False,
+        favorited=[],
         author=author  # Set author here based on authentication
     )
+
     couchbase_db.insert_document("articles", article_id, article.to_dict())
 
-    return jsonify(CreateArticleResponse(**{"article": article.to_dict()})), 201
+    return jsonify(CreateArticleResponse(**{"article": article.to_dict()}).model_dump()), 201
 
 
 @articles_blueprint.route("/", methods=["GET"])
+@with_error_handling()
 def get_articles():
     # Get query parameters for pagination
     skip = int(request.args.get("skip", 0))
@@ -95,9 +102,10 @@ def get_articles():
         articles_data.append(article)
 
     # Return articles as JSON response
-    return jsonify(GetArticlesResponse(**{"articles": articles_data})), 200
+    return jsonify(GetArticlesResponse(**{"articles": articles_data}).model_dump()), 200
 
 @articles_blueprint.route("/articles", methods=["PUT"])
+@with_error_handling()
 def update_article():
     # Get request data of 
     data = UpdateArticleRequest(**request.json)
@@ -105,44 +113,61 @@ def update_article():
     article_id = data.article_id
     fields = data.fields
 
-    try:
-        update_values = []
+    required_article = couchbase_db.query(f"SELECT * FROM `articles` WHERE article_id = '{article_id}' AND author.username = '{user.username}'")
 
-        for field, value in fields.items():
-            # Escape single quotes in the value to prevent SQL injection
-            value = str(value).replace("'", "''")
-            update_values.append(f"{field} = '{value}'")
+    for row in required_article.rows():
+        article = row['articles']
+        break
 
-        update_query = f"UPDATE articles SET {', '.join(update_values)} WHERE article_id = '{article_id}' AND author.username = '{user.id}';"
+    if not article:
+        return jsonify(ErrorResponse(**{"meerrorssage": "Article not found"}).model_dump()), 404
 
-        couchbase_db.query(update_query)
+    merged_article = {**article, **fields}
 
-        return jsonify(UpdateArticleResponse(**{"message": "Article update"})), 200
+    couchbase_db.upsert_document("articles", article_id, merged_article)
+
+    return jsonify(UpdateArticleResponse(**{"message": "Article update"}).model_dump()), 200
         
-    except Exception as e:
-        return jsonify(ErrorResponse(**{"message": "Unable to update article"})), 500
-
-
 @articles_blueprint.route("/favorite", methods=["POST"])
+@with_error_handling()
 def favorite_article():
     # Get request data of 
     data = FavoriteArticleRequest(**request.json)
     user = g.current_user
     article_id = data.article_id
 
-    try:
-        couchbase_db.query(f"""
-            UPDATE articles
-            SET favorite = ARRAY_APPEND(IFNULL(favorited, []), {user.user_id})
-            WHERE article_id = "{article_id}";
-        """)
-    except Exception as e:
-        return jsonify(ErrorResponse(**{"message": "Unable to favorite article"})), 500
+    required_article = couchbase_db.query(f"SELECT * FROM `articles` WHERE article_id = '{article_id}'")
+
+    for row in required_article.rows():
+        article = row['articles']
+        break
+
+    if not article:
+        return jsonify(ErrorResponse(**{"meerrorssage": "Article not found"}).model_dump()), 404
+    
+    action:str = "PUSH"
+
+    if not article["favorited"]:
+        article["favorited"] = []
+
+    for u_id in article["favorited"]:
+        if u_id == user.user_id:
+            action = "POP"
+
+    if action == "PUSH":
+        article["favorited"].append(user.user_id)
+    else:
+        article["favorited"].remove(user.user_id)
+
+    couchbase_db.upsert_document("articles", article_id, article)
+
+    final_test = "favorited" if action == "PUSH" else "unfavorited"
 
     # Return articles as JSON response
-    return jsonify(FavoriteArticleResponse(**{"message": "article favorited"})), 200
+    return jsonify(FavoriteArticleResponse(**{"message": f"article {final_test}"}).model_dump()), 200
 
-@articles_blueprint.route("/", methods=["POST"])
+@articles_blueprint.route("/delete", methods=["POST"])
+@with_error_handling()
 def delete_articles():
     # Get request data of 
     data = DeleteArticleRequest(**request.json)
@@ -150,81 +175,72 @@ def delete_articles():
     user = g.current_user
     article_id = data.article_id
 
-    # validating that
+    required_article = couchbase_db.query(f"SELECT * FROM `articles` WHERE article_id = '{article_id}' AND author.username = '{user.username}'")
 
-    try:
-        couchbase_db.query(f"""
-            DELETE FROM articles
-            WHERE article_id = "{article_id}"
-            AND author.username = "{user.username}";
-        """)
+    for row in required_article.rows():
+        article = row['articles']
+        break
 
-    except Exception as e:
-        return jsonify(ErrorResponse(**{"message": "article with id has been deleted sucessfully"})), 500
+    if not article:
+        return jsonify(ErrorResponse(**{"meerrorssage": "Article not found"}).model_dump()), 404
+    
+    couchbase_db.delete_document("articles", article_id)
 
     # Return articles as JSON response
-    return jsonify(DeleteArticleResponse(**{"message": "article with id has been deleted sucessfully"})), 200
+    return jsonify(DeleteArticleResponse(**{"message": "article with id has been deleted sucessfully"}).model_dump()), 200
 
 
 @articles_blueprint.route("/<slug>", methods=["GET"])
+@with_error_handling()
 def get_article_by_slug(slug):
     # Query the database to fetch the article based on the slug
-    try:
-        article = couchbase_db.query(f"""
-            SELECT *
-            FROM articles
-            WHERE slug = '{slug}';
-        """)
+    article = couchbase_db.query(f"""
+        SELECT *
+        FROM articles
+        WHERE slug = '{slug}';
+    """)
 
-        for row in article.rows():
-            article = row['articles']
-            return jsonify({"article": article}), 200
-        # article = article.rows()[0]['articles']
-        
-        # If article is found, return it as JSON response
-        if article:
-            return jsonify(GetArticleResponse(**{"article": article})), 200
-        else:
-            return jsonify(ErrorResponse(**{"error": "Article not found"})), 404
-    except Exception as e:
-        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500
+    for row in article.rows():
+        article = row['articles']
+        return jsonify({"article": article}), 200
+    # article = article.rows()[0]['articles']
+    
+    # If article is found, return it as JSON response
+    if article:
+        return jsonify(GetArticleResponse(**{"article": article})), 200
+    else:
+        return jsonify(ErrorResponse(**{"error": "Article not found"})), 404
 
 @articles_blueprint.route("/tags", methods=["GET"])
+@with_error_handling()
 def get_all_tags():
-    try:
-        articles = couchbase_db.query(f"""
-            SELECT *
-            FROM article
-            WHERE ARRAY_LENGTH(tag_list, 1) > 0;;
-        """)
-        tags = []
-        for row in articles.rows:
-            article = row['articles']
-            tags.extend(article.tag_list)
-        return jsonify(GetTagsResponse(**{"tags": tags})), 200
-    except Exception as e:
-        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500
+    articles = couchbase_db.query(f"""
+        SELECT *
+        FROM article
+        WHERE ARRAY_LENGTH(tag_list, 1) > 0;;
+    """)
+    tags = []
+    for row in articles.rows:
+        article = row['articles']
+        tags.extend(article.tag_list)
+    return jsonify(GetTagsResponse(**{"tags": tags})), 200
     
-@articles_blueprint.blueprint.route("/get_followed_articles", methods=["GET"])
+@articles_blueprint.route("/get_followed_articles", methods=["GET"])
 def get_followed_articles():
-    try:
-        current_user = g.current_user
+    current_user = g.current_user
 
-        followed_profiles_data = couchbase_db.query("""SELECT followed_username from users where following_username = "{current_user.username}"; """)
-        followed_profiles = []
+    followed_profiles_data = couchbase_db.query(f"SELECT followed_username FROM profiles where following_username = '{current_user.username}' ")
 
-        for row in followed_profiles_data.rows():
-            followed_profiles.append(row['followed_username'])
+    followed_profiles = []
 
-        articles = couchbase_db.query(f"""
-            SELECT *
-            FROM articles
-            WHERE username IN {followed_profiles};
-        """)
-        articles_data = []
-        for row in articles.rows:
-            article = row['articles']
-            articles_data.append(article)
-        return jsonify(GetArticlesResponse(**{"articles": articles_data})), 200
-    except Exception as e:
-        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500
+    for row in followed_profiles_data.rows():
+        followed_profiles.append(row['followed_username'])
+    
+    articles = couchbase_db.query(f"SELECT * FROM articles WHERE author.username IN {followed_profiles}")
+
+    articles_data = []
+    for row in articles.rows():
+        article = row['articles']
+        articles_data.append(article)
+
+    return jsonify(GetArticlesResponse(**{"articles": articles_data}).model_dump()), 200

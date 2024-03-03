@@ -11,6 +11,7 @@ from couchbase.exceptions import (
 )
 from validation.common import ErrorResponse
 from validation.comments import CreateCommentRequest, CreateCommentResponse, GetCommentsResponse, DeleteCommentResponse
+from utils.handle_errors import with_error_handling
 
 comments_blueprint = Blueprint(
     "comments_endpoints",
@@ -20,10 +21,10 @@ comments_blueprint = Blueprint(
 
 
 @comments_blueprint.before_request
+@with_error_handling()
 def apply_authentication_middleware():
     # List of routes that require authentication
     auth_required_routes = ["comments_endpoints.create_comment", "comments_endpoints.get_comments", "comments_endpoints.delete_comment"]
-    print("-----Request Endpoint-------", request.endpoint)
 
     # Check if the current request endpoint is in the list of routes that require authentication
     if request.endpoint in auth_required_routes:
@@ -33,6 +34,7 @@ def apply_authentication_middleware():
         
 
 @comments_blueprint.route("/", methods=["POST"])
+@with_error_handling()
 def create_comment():
     data = CreateCommentRequest(**request.json)
     # TODO : Request Validation
@@ -66,33 +68,30 @@ def create_comment():
 
 
 @comments_blueprint.route("/<article_id>", methods=["GET"])
+@with_error_handling()
 def get_comments(article_id):
     # Get optional query parameters
     skip = request.args.get("skip", default=0, type=int)
     limit = request.args.get("limit", default=10, type=int)
 
-    try:
-        comments = couchbase_db.query(f"""SELECT *
-            FROM comments
-            WHERE article_id = "{article_id}"
-            LIMIT {limit} OFFSET {skip}
-        """)
-        comments_data = []
+    comments = couchbase_db.query(f"""SELECT *
+        FROM comments
+        WHERE article_id = "{article_id}"
+        LIMIT {limit} OFFSET {skip}
+    """)
+    comments_data = []
 
-        for row in comments.rows():
-            comment = row['comments']
-            comments_data.append(comment)
+    for row in comments.rows():
+        comment = row['comments']
+        comments_data.append(comment)
 
-        # Convert comments to JSON format
-        # Return comments as JSON response
-        return jsonify(GetCommentsResponse(**{"comments": comments_data})), 200
-
-    except Exception as e:
-        # Handle exceptions
-        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500
+    # Convert comments to JSON format
+    # Return comments as JSON response
+    return jsonify(GetCommentsResponse(**{"comments": comments_data})), 200
 
 
 @comments_blueprint.route("/<comment_id>", methods=["DELETE"])
+@with_error_handling()
 def delete_comment(comment_id):
     try:
         couchbase_db.get_document("comments", comment_id)
@@ -108,7 +107,3 @@ def delete_comment(comment_id):
     
     except DocumentNotFoundException:
             return jsonify(ErrorResponse(**{"message": "Comment not found"})), 404
-    
-    except Exception as e:
-        # Handle exceptions
-        return jsonify(ErrorResponse(**{"error": "Internal Server Error"})), 500

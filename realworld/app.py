@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from routes.v1.users import users_blueprint
 from routes.v1.articles import articles_blueprint
 from routes.v1.comments import comments_blueprint
+from routes.v1.profiles import profiles_blueprint
 import os
 from extensions import couchbase_db
 
@@ -21,6 +22,7 @@ def _register_blueprints(app: Flask):
     app.register_blueprint(users_blueprint, url_prefix = users_blueprint.url_prefix)
     app.register_blueprint(articles_blueprint, url_prefix = articles_blueprint.url_prefix)
     app.register_blueprint(comments_blueprint, url_prefix = comments_blueprint.url_prefix)
+    app.register_blueprint(profiles_blueprint, url_prefix = profiles_blueprint.url_prefix)
 
 
 def create_app() -> Flask:

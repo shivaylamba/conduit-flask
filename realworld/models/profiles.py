@@ -13,6 +13,6 @@ class Profiles:
             "id": self.id,
             "following_username": self.following_username,
             "followed_username": self.followed_username,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
         }

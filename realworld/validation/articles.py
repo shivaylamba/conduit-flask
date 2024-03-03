@@ -19,10 +19,10 @@ class Article(BaseModel):
     description: str
     body: str
     tagList: list[str] = []
-    createdAt: str
-    updatedAt: str
-    favorited: bool
-    favoritesCount: int
+    created_at: str
+    updated_at: str
+    favorited: list[str]
+    article_id: str
 
 class CreateArticleResponse(BaseModel):
     article: Article

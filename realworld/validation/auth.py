@@ -21,6 +21,12 @@ class NestedRegisterResponse(BaseModel):
 class RegisterResponse(BaseModel):
     user: NestedRegisterResponse
 
+class NestedCurrentResponse(BaseModel):
+    user_id : str
+    username: str
+    email: str
+class CurrentResponse(BaseModel):
+    user: NestedCurrentResponse
 
 class LoginRequest(BaseModel):
     email: str

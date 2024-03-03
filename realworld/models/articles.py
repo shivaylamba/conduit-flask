@@ -17,8 +17,9 @@ class Author:
 
 class Article:
     def __init__(self, slug: str, title: str, description: str, body: str, tag_list: list[str],
-                 created_at: datetime, updated_at: datetime, favorited: list[str],
+                 created_at: datetime, updated_at: datetime, favorited: list[str], article_id: str,
                  author: Author):
+        self.article_id = article_id
         self.slug = slug
         self.title = title
         self.description = description
@@ -39,5 +40,6 @@ class Article:
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "favorited": self.favorited,
+            "article_id" : self.article_id,
             "author": self.author.to_dict()
         }
