@@ -58,13 +58,13 @@ def create_comment():
 
             couchbase_db.insert_document("comments", comment_id, comment.to_dict())
 
-            return jsonify(CreateCommentResponse(**{"comment": comment.to_dict()})), 201
+            return jsonify(CreateCommentResponse(**{"comment": comment.to_dict()}).model_dump()), 201
     
     except DocumentNotFoundException:
-            return jsonify(ErrorResponse(**{"message": "Article not found"})), 404
+            return jsonify(ErrorResponse(**{"message": "Article not found"}).model_dump()), 404
     
     except CouchbaseException as e:
-            return jsonify(ErrorResponse(**{"message": "internal server error"})), 500
+            return jsonify(ErrorResponse(**{"message": "internal server error"}).model_dump()), 500
 
 
 @comments_blueprint.route("/<article_id>", methods=["GET"])

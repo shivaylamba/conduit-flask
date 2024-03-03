@@ -13,8 +13,8 @@ class CreateCommentRequest(BaseModel):
         return fields
     
 class Comment(BaseModel):
-    comment_id: int
-    article_id: int
+    comment_id: str
+    article_id: str
     body: str
     created_at: str
 
