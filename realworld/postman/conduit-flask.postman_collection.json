@@ -195,6 +195,77 @@
 						"url": "http://127.0.0.1:8080/comments/967d093c-70fe-4a0d-ac28-c9898247cd65"
 					},
 					"response": []
+				},
+				{
+					"name": "Update Article",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "http://127.0.0.1:8080/articles?skip=0&limit=10&tag_list=training",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8080",
+							"path": [
+								"articles"
+							],
+							"query": [
+								{
+									"key": "skip",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "tag_list",
+									"value": "training"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Profile",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Article",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNDBlMTFjZWQtNGU0OC00Y2RjLTk5Y2YtNDdmNjU2YjM4ZGJjIiwiZXhwIjoxNzEwNzUyNjI0fQ.1T2r3BWiuyLMeZXmRdNdn5DUqG1wubsAJ4Tk9b434T0"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"article_id\" : \"a5d2cd0a-a2d1-4b3f-9732-e802a7ff5848\"\n}"
+						},
+						"url": "http://127.0.0.1:8080/articles/delete"
+					},
+					"response": []
 				}
 			]
 		}
