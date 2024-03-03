@@ -87,23 +87,24 @@ def get_comments(article_id):
 
     # Convert comments to JSON format
     # Return comments as JSON response
-    return jsonify(GetCommentsResponse(**{"comments": comments_data})), 200
+    return jsonify(GetCommentsResponse(**{"comments": comments_data}).model_dump()), 200
 
 
 @comments_blueprint.route("/<comment_id>", methods=["DELETE"])
 @with_error_handling()
 def delete_comment(comment_id):
     try:
-        couchbase_db.get_document("comments", comment_id)
+        comment = couchbase_db.get_document("comments", comment_id)
+        print("comment 2", comment)
+
         comment = comment.value
-        user = g.current_user
-
-        if comment.author.username != user.username:
-             return jsonify(ErrorResponse(**{"error": "You don't have permission to delete this comment"})), 403
-
+        user = g.current_user  
+        if comment["author"]["username"] != user.username:
+             return jsonify(ErrorResponse(**{"error": "You don't have permission to delete this comment"}).model_dump()), 403
+        print("Comment deleted")
         couchbase_db.delete_document("comments", comment_id)
 
-        return jsonify(DeleteCommentResponse(**{"message": "Comment deleted successfully"})), 200
+        return jsonify(DeleteCommentResponse(**{"message": "Comment deleted successfully"}).model_dump()), 200
     
     except DocumentNotFoundException:
-            return jsonify(ErrorResponse(**{"message": "Comment not found"})), 404
+            return jsonify(ErrorResponse(**{"message": "Comment not found"}).model_dump()), 404
