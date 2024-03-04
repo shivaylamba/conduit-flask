@@ -42,6 +42,8 @@ def create_article():
         username=user.username
     )
 
+    print("Taglist : ", data.tagList)
+
     article = Article(
         article_id = article_id,
         slug=create_slug(data.title),
@@ -54,6 +56,8 @@ def create_article():
         favorited=[],
         author=author  # Set author here based on authentication
     )
+
+    print ("article : " ,article)
 
     couchbase_db.insert_document("articles", article_id, article.to_dict())
 
@@ -83,15 +87,16 @@ def get_articles():
     elif favorited_query:
         articles = couchbase_db.query(f"""SELECT *
             FROM articles
-            WHERE ARRAY_CONTAINS(favorited, "{favorited_query}");
+            WHERE ARRAY_CONTAINS(favorited, "{favorited_query}")
             LIMIT {limit} OFFSET {skip}
         """)
     elif tag_query:
-        articles = couchbase_db.query(f"""SELECT *
+        query = f"""SELECT *
             FROM articles
-            WHERE ARRAY_CONTAINS(tag_list, "{tag_query}");
+            WHERE ARRAY_CONTAINS(tag_list, "{tag_query}")
             LIMIT {limit} OFFSET {skip}
-        """)
+        """
+        articles = couchbase_db.query(query)
     else:
         articles = couchbase_db.query(f'SELECT * FROM `articles` LIMIT {limit} OFFSET {skip}')
 

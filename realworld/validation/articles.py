@@ -18,11 +18,13 @@ class Article(BaseModel):
     title: str
     description: str
     body: str
-    tagList: list[str] = []
+    tag_list: list[str]
     created_at: str
     updated_at: str
     favorited: list[str]
     article_id: str
+    slug : str
+    author : object
 
 class CreateArticleResponse(BaseModel):
     article: Article
