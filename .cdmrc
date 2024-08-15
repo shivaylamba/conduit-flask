@@ -1,1 +1,2 @@
 tabs: ['README.md']
+terminals: ['pip3 install poetry && poetry install']
